@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Personal Expense Tracker</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f6ff;
+        padding: 20px;
+    }
+
+    h1 {
+        text-align: center;
+    }
+
+    .box {
+        background: white;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+    }
+
+    label {
+        display: inline-block;
+        width: 100px;
+    }
+
+    input {
+        padding: 6px;
+        width: 200px;
+    }
+
+    button {
+        padding: 8px 15px;
+        margin: 5px;
+        cursor: pointer;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: center;
+    }
+
+    tr.selected {
+        background-color: #cce5ff;
+    }
+
+    .green { background: #4CAF50; color: white; }
+    .blue { background: #2196F3; color: white; }
+    .red { background: #f44336; color: white; }
+    .yellow { background: #FFC107; }
+
+</style>
+</head>
+
+<body>
+
+<h1>Personal Expense Tracker</h1>
+
+<!-- Input Section -->
+<div class="box">
+    <h3>Add / Edit Expense</h3>
+
+    <label>Category:</label>
+    <input type="text" id="category"><br><br>
+
+    <label>Amount (₹):</label>
+    <input type="number" id="amount"><br><br>
+
+    <label>Note:</label>
+    <input type="text" id="note"><br><br>
+
+    <button class="green" onclick="addExpense()">Add Expense</button>
+    <button class="blue" onclick="updateExpense()">Update Selected</button>
+    <br>
+    <button class="red" onclick="deleteExpense()">Delete Selected</button>
+</div>
+
+<!-- Category Buttons -->
+<div class="box">
+    <h3>Quick Categories</h3>
+    <div id="categoryButtons"></div>
+</div>
+
+<!-- Table -->
+<div class="box">
+    <h3>Expense List</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Note</th>
+            </tr>
+        </thead>
+        <tbody id="expenseTable"></tbody>
+    </table>
+</div>
+
+<button class="yellow" onclick="loadSelected()">Load Selected for Editing</button>
+
+<!-- Summary -->
+<div class="box">
+    <h3>Total & Summary</h3>
+    <p id="total">Total Spent: ₹0</p>
+    <pre id="summary"></pre>
+</div>
+
+<script>
+let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+let selectedIndex = null;
+
+const categories = ["Food","Transport","Rent","Utilities","Entertainment","Shopping","Health","Education","Travel","Other"];
+
+function saveData() {
+    localStorage.setItem("expenses", JSON.stringify(expenses));
+}
+
+function addExpense() {
+    let category = category.value.trim();
+    let amount = amountInput.value.trim();
+    let note = noteInput.value.trim();
+
+    if (!category || !amount) {
+        alert("Category and Amount are required");
+        return;
+    }
+
+    let expense = {
+        date: new Date().toISOString().split("T")[0],
+        category,
+        amount: parseInt(amount),
+        note
+    };
+
+    expenses.push(expense);
+    saveData();
+    clearInputs();
+    loadExpenses();
+}
+
+function loadExpenses() {
+    expenseTable.innerHTML = "";
+    let total = 0;
+    let summary = {};
+
+    expenses.forEach((exp, index) => {
+        let row = document.createElement("tr");
+        row.onclick = () => selectRow(index, row);
+
+        row.innerHTML = `
+            <td>${exp.date}</td>
+            <td>${exp.category}</td>
+            <td>${exp.amount}</td>
+            <td>${exp.note}</td>
+        `;
+        expenseTable.appendChild(row);
+
+        total += exp.amount;
+        summary[exp.category] = (summary[exp.category] || 0) + exp.amount;
+    });
+
+    totalText.innerText = `Total Spent: ₹${total}`;
+
+    let sumText = "";
+    for (let cat in summary) {
+        sumText += `${cat}: ₹${summary[cat]}\n`;
+    }
+    summaryText.innerText = sumText;
+}
+
+function selectRow(index, row) {
+    document.querySelectorAll("tr").forEach(r => r.classList.remove("selected"));
+    row.classList.add("selected");
+    selectedIndex = index;
+}
+
+function loadSelected() {
+    if (selectedIndex === null) {
+        alert("Select a row first");
+        return;
+    }
+    let exp = expenses[selectedIndex];
+    category.value = exp.category;
+    amountInput.value = exp.amount;
+    noteInput.value = exp.note;
+}
+
+function updateExpense() {
+    if (selectedIndex === null) {
+        alert("Select an expense to update");
+        return;
+    }
+
+    expenses[selectedIndex].category = category.value;
+    expenses[selectedIndex].amount = parseInt(amountInput.value);
+    expenses[selectedIndex].note = noteInput.value;
+
+    saveData();
+    clearInputs();
+    loadExpenses();
+}
+
+function deleteExpense() {
+    if (selectedIndex === null) {
+        alert("Select an expense to delete");
+        return;
+    }
+
+    if (!confirm("Are you sure?")) return;
+
+    expenses.splice(selectedIndex, 1);
+    selectedIndex = null;
+    saveData();
+    loadExpenses();
+}
+
+function clearInputs() {
+    category.value = "";
+    amountInput.value = "";
+    noteInput.value = "";
+}
+
+function createCategoryButtons() {
+    categories.forEach(cat => {
+        let btn = document.createElement("button");
+        btn.innerText = cat;
+        btn.onclick = () => category.value = cat;
+        categoryButtons.appendChild(btn);
+    });
+}
+
+/* Element shortcuts */
+const category = document.getElementById("category");
+const amountInput = document.getElementById("amount");
+const noteInput = document.getElementById("note");
+const expenseTable = document.getElementById("expenseTable");
+const totalText = document.getElementById("total");
+const summaryText = document.getElementById("summary");
+const categoryButtons = document.getElementById("categoryButtons");
+
+createCategoryButtons();
+loadExpenses();
+</script>
+
+</body>
+</html>
